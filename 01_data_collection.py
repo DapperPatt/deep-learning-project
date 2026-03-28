@@ -75,38 +75,45 @@ def collect_season(year: int) -> pd.DataFrame:
 
     rows = []
     rounds = schedule["RoundNumber"].tolist()
-
+#////////////
     for rnd in tqdm(rounds, desc=f"  Rounds ({year})", leave=False):
         try:
             session = fastf1.get_session(year, rnd, "R")
             session.load(laps=True, telemetry=False, weather=False, messages=False)
+
+            if session.laps is None or len(session.laps) == 0:
+                print(f"    [WARN] year={year} round={rnd}: no laps available, skipping")
+                continue
+
+            laps = session.laps[["Driver", "Team", "LapNumber", "LapTime"]].copy()
+            laps = laps.dropna(subset=["LapTime", "Team"])
+
+            laps["lap_time_s"] = laps["LapTime"].apply(timedelta_to_seconds)
+            laps = laps.dropna(subset=["lap_time_s"])
+            laps = laps[laps["lap_time_s"] > 0]
+
+            laps["team_canonical"] = laps["Team"].apply(normalise_team)
+            laps = laps.dropna(subset=["team_canonical"])
+
+            if laps.empty:
+                continue
+
+            laps = laps.rename(columns={
+                "Driver": "driver",
+                "LapNumber": "lap",
+                "team_canonical": "team",
+            })
+            laps["year"] = year
+            laps["race_round"] = rnd
+
+            rows.append(laps[["year", "race_round", "team", "driver", "lap", "lap_time_s"]])
+
         except Exception as e:
-            print(f"    [WARN] year={year} round={rnd}: {e}")
+            print(f"    [WARN] year={year} round={rnd}: {e} — skipping")
             continue
 
-        laps = session.laps[["Driver", "Team", "LapNumber", "LapTime"]].copy()
-        laps = laps.dropna(subset=["LapTime", "Team"])
-
-        laps["lap_time_s"] = laps["LapTime"].apply(timedelta_to_seconds)
-        laps = laps.dropna(subset=["lap_time_s"])
-        laps = laps[laps["lap_time_s"] > 0]
-
-        laps["team_canonical"] = laps["Team"].apply(normalise_team)
-        laps = laps.dropna(subset=["team_canonical"])
-
-        laps = laps.rename(columns={
-            "Driver": "driver",
-            "LapNumber": "lap",
-            "team_canonical": "team",
-        })
-        laps["year"] = year
-        laps["race_round"] = rnd
-
-        rows.append(laps[["year", "race_round", "team", "driver", "lap", "lap_time_s"]])
-
-        # Be polite — avoid hammering the cache unnecessarily
         time.sleep(0.05)
-
+#///////
     if not rows:
         print(f"  [WARN] No data collected for {year}")
         return pd.DataFrame()
