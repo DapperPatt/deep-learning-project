@@ -61,7 +61,7 @@ def load_final_model():
     path = os.path.join(MODELS_DIR, "model_final.pt")
     if not os.path.exists(path):
         raise FileNotFoundError("model_final.pt not found — run 04_train_evaluate.py first.")
-    ckpt   = torch.load(path, map_location="cpu")
+    ckpt   = torch.load(path, map_location="cpu", weights_only=False)
     model  = F1GRU()
     model.load_state_dict(ckpt["model_state"])
     model.eval()
