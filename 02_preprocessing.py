@@ -195,11 +195,6 @@ def save_outputs(master_raw, X, y, meta_list, scaler):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def split_by_years(X, y, teams, years, train_years, test_years):
-    """
-    Split pre-built sequence arrays by which year each sample's target falls in.
-    Re-fits the scaler ONLY on training data (data-leakage-safe).
-    Returns scaled X_train, X_test and original-scale y_train, y_test.
-    """
     train_mask = np.isin(years, train_years)
     test_mask  = np.isin(years, test_years)
 
@@ -211,22 +206,29 @@ def split_by_years(X, y, teams, years, train_years, test_years):
     teams_te = teams[test_mask]
     years_te = years[test_mask]
 
-    # Re-scale: fit on train only
+    if len(X_tr_raw) == 0:
+        raise ValueError(
+            f"No training samples found for years {train_years}. "
+            f"Available years in data: {sorted(set(years.tolist()))}. "
+            f"Run 01_data_collection.py to fetch missing seasons."
+        )
+    if len(X_te_raw) == 0:
+        raise ValueError(
+            f"No test samples found for years {test_years}. "
+            f"Available years in data: {sorted(set(years.tolist()))}. "
+            f"Run 01_data_collection.py to fetch missing seasons."
+        )
+
     N_tr, S, F = X_tr_raw.shape
     scaler = StandardScaler()
-    X_tr_2d = X_tr_raw.reshape(-1, F)
-    X_te_2d = X_te_raw.reshape(-1, F)
+    X_tr_scaled = scaler.fit_transform(X_tr_raw.reshape(-1, F)).reshape(N_tr, S, F).astype(np.float32)
+    X_te_scaled = scaler.transform(X_te_raw.reshape(-1, F)).reshape(X_te_raw.shape[0], S, F).astype(np.float32)
 
-    X_tr_scaled = scaler.fit_transform(X_tr_2d).reshape(N_tr, S, F).astype(np.float32)
-    X_te_scaled = scaler.transform(X_te_2d).reshape(X_te_raw.shape[0], S, F).astype(np.float32)
-
-    # y is already in original seconds scale (load from raw feature table)
     return (
         X_tr_scaled, y_tr.astype(np.float32),
         X_te_scaled, y_te.astype(np.float32),
         teams_tr, teams_te, years_te, scaler
     )
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Main
