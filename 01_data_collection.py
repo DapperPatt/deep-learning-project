@@ -105,14 +105,39 @@ def collect_season(year: int) -> pd.DataFrame:
             })
             laps["year"] = year
             laps["race_round"] = rnd
-
             rows.append(laps[["year", "race_round", "team", "driver", "lap", "lap_time_s"]])
+
+        except fastf1.exceptions.RateLimitExceededError:
+            print(f"\n    [RATE LIMIT] Hit 500 calls/h cap. Waiting 60 minutes...")
+            for remaining in range(60, 0, -1):
+                print(f"    Resuming in {remaining} min...   ", end="\r")
+                time.sleep(60)
+            print("\n    [RATE LIMIT] Resuming now.")
+            # Retry this round
+            try:
+                session = fastf1.get_session(year, rnd, "R")
+                session.load(laps=True, telemetry=False, weather=False, messages=False)
+                if session.laps is not None and len(session.laps) > 0:
+                    laps = session.laps[["Driver", "Team", "LapNumber", "LapTime"]].copy()
+                    laps = laps.dropna(subset=["LapTime", "Team"])
+                    laps["lap_time_s"] = laps["LapTime"].apply(timedelta_to_seconds)
+                    laps = laps.dropna(subset=["lap_time_s"])
+                    laps = laps[laps["lap_time_s"] > 0]
+                    laps["team_canonical"] = laps["Team"].apply(normalise_team)
+                    laps = laps.dropna(subset=["team_canonical"])
+                    if not laps.empty:
+                        laps = laps.rename(columns={"Driver": "driver", "LapNumber": "lap", "team_canonical": "team"})
+                        laps["year"] = year
+                        laps["race_round"] = rnd
+                        rows.append(laps[["year", "race_round", "team", "driver", "lap", "lap_time_s"]])
+            except Exception as e:
+                print(f"    [WARN] Retry failed for year={year} round={rnd}: {e}")
 
         except Exception as e:
             print(f"    [WARN] year={year} round={rnd}: {e} — skipping")
             continue
 
-        time.sleep(0.05)
+        time.sleep(0.3)  # slightly longer delay between rounds to stay under the cap
 #///////
     if not rows:
         print(f"  [WARN] No data collected for {year}")
