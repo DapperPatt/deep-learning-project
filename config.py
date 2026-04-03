@@ -26,13 +26,15 @@ os.makedirs(CACHE_DIR, exist_ok=True)
 # ─────────────────────────────────────────────────────────────────────────────
 # YEARS
 # ─────────────────────────────────────────────────────────────────────────────
-ALL_YEARS        = list(range(2014, 2026))   # 2014–2025 (inclusive)
+##ALL_YEARS        = list(range(2014, 2026))   # 2014–2025 (inclusive)
+ALL_YEARS = list(range(2018, 2026))   # FastF1 only has lap data from 2018+
+
 FORECAST_YEAR    = 2026
 
 # Walk-forward validation splits
 SPLITS = [
-    {"train": list(range(2014, 2017)), "test": [2017], "label": "Split_1"},
-    {"train": list(range(2014, 2022)), "test": [2022], "label": "Split_2"},
+    {"train": list(range(2020, 2022)), "test": [2022], "label": "Split_1"},
+    {"train": list(range(2020, 2024)), "test": [2024], "label": "Split_2"},
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -143,7 +145,7 @@ TARGET_COL = "mean_delta"
 # ─────────────────────────────────────────────────────────────────────────────
 # MODEL HYPERPARAMETERS
 # ─────────────────────────────────────────────────────────────────────────────
-SEQ_LEN        = 3        # look-back window (seasons)
+SEQ_LEN        = 2        # look-back window (seasons)
 INPUT_SIZE     = len(FEATURE_COLS)
 HIDDEN_SIZE    = 64
 NUM_LAYERS     = 2
@@ -157,13 +159,12 @@ PATIENCE       = 40       # early stopping patience
 # ─────────────────────────────────────────────────────────────────────────────
 # REGULATION ERAS (for feature encoding)
 # ─────────────────────────────────────────────────────────────────────────────
+
 ERA_MAP = {
-    2014: 0, 2015: 0, 2016: 0,
-    2017: 1, 2018: 1, 2019: 1, 2020: 1, 2021: 1,
+    2018: 1, 2019: 1, 2020: 1, 2021: 1,
     2022: 2, 2023: 2, 2024: 2, 2025: 2,
-    2026: 3,   # new era — model must generalise to this
+    2026: 3,
 }
 
-ERA_START = {0: 2014, 1: 2017, 2: 2022, 3: 2026}
-
+ERA_START = {1: 2017, 2: 2022, 3: 2026}
 RANDOM_SEED = 42
