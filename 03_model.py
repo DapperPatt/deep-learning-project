@@ -178,7 +178,7 @@ def build_model_and_optim(lr: float, weight_decay: float, device: torch.device):
     model     = F1GRU().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode="min", factor=0.5, patience=20, verbose=False
+        optimizer, mode="min", factor=0.5, patience=20
     )
     criterion = nn.MSELoss()
     return model, optimizer, scheduler, criterion
