@@ -34,7 +34,13 @@ $java = Find-Java25
 if (-not $java) {
     Write-Host "Java 25 not found - installing Eclipse Temurin 25..." -ForegroundColor Cyan
     if (Get-Command winget -ErrorAction SilentlyContinue) {
-        winget install --id EclipseAdoptium.Temurin.25.JDK -e --accept-source-agreements --accept-package-agreements
+        # Exit code 1618 = another Windows install (often Windows Update) is running; wait and retry
+        for ($i = 1; $i -le 10; $i++) {
+            winget install --id EclipseAdoptium.Temurin.25.JDK -e --accept-source-agreements --accept-package-agreements
+            if (Find-Java25) { break }
+            Write-Host "Another install is busy - retrying in 60s ($i/10)..." -ForegroundColor Yellow
+            Start-Sleep 60
+        }
     } else {
         $msi = "$env:TEMP\temurin25.msi"
         curl.exe -L -o $msi "https://api.adoptium.net/v3/installer/latest/25/ga/windows/x64/jdk/hotspot/normal/eclipse"
